@@ -11,6 +11,10 @@ Building
 Build individual demos with either `g++` or `mpic++` as appropriate. Examples:
 
 ```
+clang++ -Xpreprocessor -fopenmp -I$(brew --prefix libomp)/include \
+  -L$(brew --prefix libomp)/lib -lomp -O3 -o omp_if omp_if.cpp
+
+  
 g++ -O3 -fopenmp -o omp_hello omp_hello.cpp
 g++ -O3 -fopenmp -o omp_barrier omp_barrier.cpp
 
