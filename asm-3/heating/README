@@ -1,0 +1,39 @@
+159735 Assignment 3 startup package
+-----------------------------------
+
+Do not modify array.hxx, arrayff.hxx, fits.hxx, fitsfile.h, or fitsfile.cpp.
+
+1 - First make sure you have the cfitsio library and ds9 installed on your 
+system
+
+2 - The build the start up package as follows:
+
+Save the file heating.tar to somewhere in your home directory
+
+Unpack the file:
+
+tar xvf heating.tar
+
+You will then see the directory heating/ You can rename it if you like.
+
+Change to that directory and open the makefile in a text editor. Make the 
+necessary modifications to the makefile.
+
+Build the demo program:
+
+make heat_demo
+
+Run the demo program with the image dimensions as a user argument, eg:
+
+./heat_demo 100
+
+This will create a 100X100 pixel image called "plate0.fit". You can view 
+this image using ds9:
+
+ds9 plate0.fit &
+
+This is just the initial state of the image before running the heat transfer 
+solution. You need to modify this to implement heat transfer as discussed in 
+the lectures. It is suggested you copy heat_demo.cpp to another source program 
+and work on that. You will then need to make another entry in the makefile.
+

@@ -33,7 +33,7 @@ Compile any MPI demo with `mpicc` (C) or `mpicxx` (C++):
 ```bash
 export MPICH_CXX=clang++ # note required
 mpicc -o first first.c
-mpicxx -o first first.cpp
+mpicxx -o first first.c
 mpicxx -o gamma_mc gamma_mc.cpp 
 ```
 
