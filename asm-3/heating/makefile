@@ -6,22 +6,48 @@
 
 CPP = g++
 
-# Flags for Mac OSX
-#CFLAGS = -w -O3 -arch ppc -arch i386
-
 # FLAGS for Linux
 CFLAGS = -w -O3
 
 # Locally compiled modules
 OBJS = fitsfile.o
 
-# Link to CFITSIO libraries - modify these paths accordingly
-LIBP = -L/home/iabond/cfitsio
-INCP = -I/home/iabond/cfitsio
+# ---------------------------------------------------------------------------
+# Link to CFITSIO libraries
+#
+# Normally nothing needs changing here: pkg-config locates the library for you.
+# That covers a distro package (Debian/Ubuntu: sudo apt install libcfitsio-dev)
+# as well as Homebrew on a Mac.
+#
+# If you built CFITSIO from source into your own directory, point at it with:
+#
+#     make heat_demo CFITSIO=$(HOME)/cfitsio
+#
+# ---------------------------------------------------------------------------
+PKG_INC := $(shell pkg-config --cflags cfitsio 2>/dev/null)
+PKG_LIB := $(shell pkg-config --libs   cfitsio 2>/dev/null)
 
-LIBS = -lcfitsio -lm
+ifneq ($(CFITSIO),)
+  # Explicit location given on the command line
+  INCP = -I$(CFITSIO) -I$(CFITSIO)/include
+  LIBP = -L$(CFITSIO) -L$(CFITSIO)/lib
+  LIBS = -lcfitsio -lm
+else ifneq ($(strip $(PKG_LIB)),)
+  # Found by pkg-config
+  INCP = $(PKG_INC)
+  LIBP =
+  LIBS = $(PKG_LIB) -lm
+else
+  # Last resort: standard system locations
+  INCP = -I/usr/include/cfitsio
+  LIBP =
+  LIBS = -lcfitsio -lm
+endif
 
-MODS = $(INCP) $(LIBP) $(LIBS) $(OBJS) 
+# NOTE: the object files must come BEFORE the libraries they depend on. The GNU
+# linker resolves symbols in the order it sees them, so "-lcfitsio fitsfile.o"
+# leaves fitsfile.o's references to ffopen/ffclos/... unresolved.
+MODS = $(INCP) $(OBJS) $(LIBP) $(LIBS)
 
 BINS = heat_demo
 
@@ -38,4 +64,3 @@ heat_demo : heat_demo.cpp draw.hxx array.hxx $(OBJS)
 # Modules compiled and linked separately
 fitsfile.o : fitsfile.cpp fitsfile.h
 	${CPP} $(CFLAGS) $(INCP) -c fitsfile.cpp
-
