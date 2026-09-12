@@ -1,0 +1,10 @@
+# Build artifacts
+*.o
+heat_demo
+heat
+heat_omp
+
+# Generated FITS images
+*.fit
+*.fits
+*.png
