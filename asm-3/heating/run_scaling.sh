@@ -270,19 +270,45 @@ done
 echo "study,version,part,npix,threads,iters,converged,time,busymax,busymin,busyavg,hash,rep,load" > "$OUT"
 
 # Run one configuration and append its RESULT line to the CSV as one row.
+#
+# NOTE: the awk variable holding the load average is called ldavg, not load.
+# "load" is a reserved builtin name in gawk (Ubuntu's awk), which rejects
+# -v load=... with a fatal error, while the BSD awk on macOS accepts it. The
+# CSV column is still called "load".
 record() {
   local study=$1 rep=$2; shift 2
-  local load
-  load=$(loadavg1)
-  "$@" 2>/dev/null | grep '^RESULT' | awk -v study="$study" -v rep="$rep" -v load="$load" '
+  local ldavg
+  ldavg=$(loadavg1)
+  "$@" 2>/dev/null | grep '^RESULT' | awk -v study="$study" -v rep="$rep" -v ldavg="$ldavg" '
     {
       for (i = 2; i <= NF; ++i) { split($i, a, "="); m[a[1]] = a[2] }
       printf "%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s\n",
         study, m["version"], m["part"], m["npix"], m["threads"], m["iters"],
         m["converged"], m["time"], m["busymax"], m["busymin"], m["busyavg"],
-        m["hash"], rep, load
+        m["hash"], rep, ldavg
     }' >> "$OUT"
   printf '.'
+}
+
+# Prove the whole pipeline actually produces a CSV row before spending half an
+# hour discovering that it does not. A broken awk, a binary that will not
+# start or a RESULT line that has changed shape all show up here instead of as
+# an empty CSV at the end.
+preflight() {
+  local before after
+  before=$(wc -l < "$OUT")
+  record preflight 0 ./heat 64 -o none -i 5 >/dev/null
+  after=$(wc -l < "$OUT")
+  if [ "$after" -le "$before" ]; then
+    echo >&2
+    echo "error: the measurement pipeline produced no CSV row." >&2
+    echo "       Check that ./heat runs and that awk accepts -v:" >&2
+    echo "         ./heat 64 -o none -i 5 | grep '^RESULT'" >&2
+    echo "         $(awk --version 2>/dev/null | head -1 || awk -W version 2>&1 | head -1)" >&2
+    exit 1
+  fi
+  # Drop the probe row again; it is not a measurement.
+  grep -v '^preflight,' "$OUT" > "$OUT.tmp" && mv "$OUT.tmp" "$OUT"
 }
 
 # --------------------------------------------------------------------------
@@ -312,6 +338,10 @@ echo "thread sweep (full)   : $THREADS_FULL"
 echo "thread sweep (coarse) : $THREADS_COARSE"
 echo "strong plate sizes    : $STRONG_SIZES"
 echo "studies               : $STUDIES"
+
+printf "pipeline check        : "
+preflight
+echo "ok"
 
 T0=$(date +%s)
 
