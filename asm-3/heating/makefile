@@ -66,7 +66,7 @@ endif
 # leaves fitsfile.o's references to ffopen/ffclos/... unresolved.
 MODS = $(INCP) $(OBJS) $(LIBP) $(LIBS)
 
-BINS = heat_demo
+BINS = heat_demo heat heat_omp
 
 all : $(BINS)
 
@@ -78,15 +78,14 @@ clean :
 heat_demo : heat_demo.cpp draw.hxx array.hxx $(OBJS)
 	${CPP} $(CFLAGS) -o heat_demo heat_demo.cpp $(MODS)
 
-# Sequential solution. Uncomment once you have written heat.cpp, and add it
-# to BINS above so that a plain "make" builds it too.
-#heat : heat.cpp draw.hxx array.hxx $(OBJS)
-#	${CPP} $(CFLAGS) -o heat heat.cpp $(MODS)
+# Sequential solution.
+heat : heat.cpp heatutil.hxx draw.hxx array.hxx $(OBJS)
+	${CPP} $(CFLAGS) -o heat heat.cpp $(MODS)
 
-# Parallel solution. Uncomment once you have written heat_omp.cpp. The OpenMP
-# flags are needed on BOTH the compile and the link side.
-#heat_omp : heat_omp.cpp draw.hxx array.hxx $(OBJS)
-#	${CPP} $(CFLAGS) $(OMPFLAGS) -o heat_omp heat_omp.cpp $(MODS) $(OMPLIBS)
+# Parallel solution. The OpenMP flags are needed on BOTH the compile and the
+# link side.
+heat_omp : heat_omp.cpp heatutil.hxx draw.hxx array.hxx $(OBJS)
+	${CPP} $(CFLAGS) $(OMPFLAGS) -o heat_omp heat_omp.cpp $(MODS) $(OMPLIBS)
 
 # Modules compiled and linked separately
 fitsfile.o : fitsfile.cpp fitsfile.h
