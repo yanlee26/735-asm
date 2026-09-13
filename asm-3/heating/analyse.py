@@ -14,7 +14,9 @@ machine. The spread between the fastest and the median is reported so the
 reader can judge how much to trust the numbers.
 """
 import csv
+import re
 import statistics
+import sys
 from pathlib import Path
 
 import matplotlib
@@ -22,7 +24,14 @@ matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 import numpy as np
 
-RES = Path("results")
+# Which run to analyse. Defaults to results/, but run_scaling.sh can be told
+# to write elsewhere (OUTDIR=results-hpc), so that a second machine's numbers
+# sit beside the first's instead of overwriting them.
+RES = Path(sys.argv[1]) if len(sys.argv) > 1 else Path("results")
+if not (RES / "scaling.csv").exists():
+    sys.exit(f"{RES/'scaling.csv'} not found -- run ./run_scaling.sh first "
+             f"(or pass the results directory: ./analyse.py results-hpc)")
+
 ROWS = []
 with open(RES / "scaling.csv") as fh:
     for r in csv.DictReader(fh):
@@ -88,6 +97,29 @@ def emit(line=""):
 
 
 machine = (RES / "machine.txt").read_text().strip() if (RES / "machine.txt").exists() else "?"
+
+# run_scaling.sh writes a "marker : <p> <label>" line giving the thread count
+# beyond which the machine stops handing out another full core -- the 4
+# performance cores of the laptop, or the physical core count of an SMT
+# machine. Nothing is drawn if the machine has no such boundary.
+_m = re.search(r"^marker\s*:\s*(\d+)\s+(.*)$", machine, re.M)
+if _m:
+    CORE_MARK = (int(_m.group(1)), _m.group(2).strip())
+else:
+    # machine.txt from before the marker line existed: recover it from the
+    # laptop's "4 performance + 6 efficiency" description.
+    _m = re.search(r"(\d+)\s+performance", machine)
+    CORE_MARK = (int(_m.group(1)), "performance cores") if _m else None
+
+
+def mark_cores(ax, ytext):
+    """Draw the core-boundary guide line, if this machine has one."""
+    if not CORE_MARK:
+        return
+    p, label = CORE_MARK
+    ax.axvline(p, color="grey", ls=":", lw=1)
+    ax.text(p + 0.1, ytext, f"{p} {label}", fontsize=8, color="grey")
+
 emit("# Scaling results\n")
 emit("```")
 emit(machine)
@@ -213,8 +245,7 @@ ax.grid(alpha=.3); ax.legend(fontsize=9)
 
 ax = axes[1]
 ax.axhline(1.0, color="k", ls="--", lw=1, label="ideal")
-ax.axvline(4, color="grey", ls=":", lw=1)
-ax.text(4.1, 0.05, "4 performance cores", fontsize=8, color="grey")
+mark_cores(ax, 0.05)
 for n in sorted(fits):
     f, ps, ss = fits[n]
     ax.plot(ps, [s / p for p, s in zip(ps, ss)], "o-", ms=4, label=f"{n}x{n}")
@@ -323,8 +354,7 @@ ax = axes[1]
 ax.plot(bp, bs, "o-", ms=5, label="static partition")
 ax.plot(bp, bd, "s-", ms=5, label="dynamic partition")
 ax.axhline(100, color="k", ls="--", lw=1, label="perfect balance")
-ax.axvline(4, color="grey", ls=":", lw=1)
-ax.text(4.1, 8, "4 performance cores", fontsize=8, color="grey")
+mark_cores(ax, 8)
 ax.set_xlabel("threads $p$"); ax.set_ylabel("mean thread busy % of wall time")
 ax.set_title(f"Load balance ({bign}x{bign} plate)")
 ax.set_ylim(0, 115); ax.grid(alpha=.3); ax.legend(fontsize=9)

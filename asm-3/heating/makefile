@@ -1,12 +1,36 @@
 # Makefile for 159.735 Assignment 3
 #
-# To build just type:
+# To build everything:
 #
-# make heat_demo
+#     make
+#
+# Nothing in here is machine specific: the same makefile builds on the
+# 159.735 HPC node (Ubuntu/GCC) and on a macOS laptop (Apple clang plus
+# Homebrew's libomp). The two things that differ between them, where CFITSIO
+# lives and how OpenMP is switched on, are worked out below.
+#
+# If a build fails, run
+#
+#     make env
+#
+# which reports the compiler, whether it can do OpenMP, and where CFITSIO was
+# found.
+#
+# Useful overrides:
+#
+#     make CPP=g++-12               use a particular compiler
+#     make CFITSIO=$(HOME)/cfitsio  CFITSIO in your own directory
+#     make EXTRA=-march=native      tune for the machine you are building on
+#
+# -march=native is worth trying on the cluster: this is a memory bound
+# stencil and the wider vector units help. It is off by default because it
+# makes the binaries unportable between nodes. If you use it, check that
+# heat and heat_omp still print the same "hash=" value -- that is the proof
+# that the extra optimisation has not changed the arithmetic.
 
 CPP = g++
 
-CFLAGS = -w -O3
+CFLAGS = -w -O3 $(EXTRA)
 
 # Locally compiled modules
 OBJS = fitsfile.o
@@ -18,9 +42,17 @@ OBJS = fitsfile.o
 # That covers Homebrew on macOS (brew install cfitsio) as well as a distro
 # package on Linux (Debian/Ubuntu: sudo apt install libcfitsio-dev).
 #
-# If you built CFITSIO from source into your own directory, point at it with:
+# On a cluster you usually have no root, so if pkg-config comes up empty try,
+# in order:
 #
-#     make heat_demo CFITSIO=$(HOME)/cfitsio
+#   1. a module, if the site provides one:   module load cfitsio
+#   2. an install in your own home directory:
+#
+#        make CFITSIO=$(HOME)/cfitsio
+#
+#      having built it there once with
+#
+#        ./configure --prefix=$(HOME)/cfitsio && make && make install
 #
 # ---------------------------------------------------------------------------
 PKG_INC := $(shell pkg-config --cflags cfitsio 2>/dev/null)
@@ -68,11 +100,31 @@ MODS = $(INCP) $(OBJS) $(LIBP) $(LIBS)
 
 BINS = heat_demo heat heat_omp
 
+.PHONY : all clean env
+
 all : $(BINS)
 
 clean :
 	rm -f $(BINS)
 	rm -f *.o
+
+# Report what the build is about to use. Run this first on a machine you have
+# not built on before; it turns three confusing link errors into one clear
+# answer about what is missing.
+env :
+	@echo "compiler : $(CPP)"
+	@$(CPP) --version | head -1
+	@echo "system   : $(UNAME_S) ($(shell uname -m))"
+	@echo "cores    : $(shell nproc 2>/dev/null || sysctl -n hw.ncpu 2>/dev/null || echo '?')"
+	@echo "CFLAGS   : $(CFLAGS)"
+	@echo "omp flags: $(OMPFLAGS) | $(OMPLIBS)"
+	@echo "cfitsio  : $(if $(CFITSIO),from CFITSIO=$(CFITSIO),$(if $(strip $(PKG_LIB)),via pkg-config,not found by pkg-config -- falling back to /usr/include/cfitsio))"
+	@echo "  inc    : $(INCP)"
+	@echo "  lib    : $(LIBP) $(LIBS)"
+	@printf 'int main(){return 0;}\n' > .omptest.c
+	@$(CPP) $(OMPFLAGS) .omptest.c $(OMPLIBS) -o .omptest 2>/dev/null \
+	  && echo "openmp   : OK" || echo "openmp   : FAILED -- $(CPP) cannot compile with $(OMPFLAGS)"
+	@rm -f .omptest .omptest.c
 
 # Demo program. Add more programs by making entries similar to this
 heat_demo : heat_demo.cpp draw.hxx array.hxx $(OBJS)

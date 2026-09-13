@@ -186,8 +186,17 @@ are fixed, so they are converged by definition and are left out of the
 count; requiring all <code>(npix-2) x (npix-2)</code> interior pixels to
 settle is exactly equivalent to requiring all <code>npix x npix</code>
 of them.</p>
-<p>The number of iterations this takes is not known in advance and grows
-roughly as <code>n^1.85</code>:</p>
+<p>The number of iterations this takes is not known in advance. Jacobi’s
+convergence rate is set by the spectral radius of its iteration matrix,
+<code>cos(pi/(n+1)) ~ 1 - pi^2/2n^2</code>, which predicts an iteration
+count growing as <code>n^2</code>. The measured counts fit
+<code>n^1.83</code> – slightly below <code>n^2</code> because the
+stopping test is an absolute threshold on the per-iteration
+<em>change</em>, and the change at a given error level is itself
+proportional to <code>1/n^2</code>, so the test is relatively easier to
+satisfy on a larger plate. Folding that in, the model
+<code>k = A n^2 (B - 2 ln n)</code> reproduces all four measured counts
+to within 2.5%:</p>
 <table>
 <thead>
 <tr>
@@ -1030,7 +1039,7 @@ rather than mechanical: red-black Gauss-Seidel or successive
 over-relaxation would cut the <em>number</em> of iterations by a large
 factor, which is worth far more than the remaining few tens of percent
 available from tuning the parallel decomposition. Multigrid would be
-better still. Jacobi’s <code>n^1.85</code> iteration count, not its
+better still. Jacobi’s <code>n^2</code> iteration count, not its
 per-iteration parallelism, is the real cost of this method.</p></li>
 </ol>
 </body>

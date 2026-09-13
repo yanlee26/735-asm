@@ -49,8 +49,14 @@ by definition and are left out of the count; requiring all
 `(npix-2) x (npix-2)` interior pixels to settle is exactly equivalent to
 requiring all `npix x npix` of them.
 
-The number of iterations this takes is not known in advance and grows roughly
-as `n^1.85`:
+The number of iterations this takes is not known in advance. Jacobi's
+convergence rate is set by the spectral radius of its iteration matrix,
+`cos(pi/(n+1)) ~ 1 - pi^2/2n^2`, which predicts an iteration count growing as
+`n^2`. The measured counts fit `n^1.83` -- slightly below `n^2` because the
+stopping test is an absolute threshold on the per-iteration *change*, and the
+change at a given error level is itself proportional to `1/n^2`, so the test
+is relatively easier to satisfy on a larger plate. Folding that in, the model
+`k = A n^2 (B - 2 ln n)` reproduces all four measured counts to within 2.5%:
 
 | plate | 100x100 | 200x200 | 400x400 | 800x800 |
 |---|---:|---:|---:|---:|
@@ -539,6 +545,6 @@ steepest gradients — and in a real board, the thermal stress — would be.
    than mechanical: red-black Gauss-Seidel or successive over-relaxation
    would cut the *number* of iterations by a large factor, which is worth far
    more than the remaining few tens of percent available from tuning the
-   parallel decomposition. Multigrid would be better still. Jacobi's
-   `n^1.85` iteration count, not its per-iteration parallelism, is the real
-   cost of this method.
+   parallel decomposition. Multigrid would be better still. Jacobi's `n^2`
+   iteration count, not its per-iteration parallelism, is the real cost of
+   this method.
