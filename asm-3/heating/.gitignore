@@ -7,4 +7,11 @@ heat_omp
 # Generated FITS images
 *.fit
 *.fits
-*.png
+
+# Scratch renders at the project root (plate0.png from heat_demo, and the
+# like). Note the leading slash: it confines this rule to the top level.
+# The report figures under results/ and results-hpc/ are deliberately NOT
+# ignored -- REPORT.md and REPORT-HPC.md reference them, so a clone of the
+# repository has to contain them or every figure in both reports is a broken
+# image.
+/*.png

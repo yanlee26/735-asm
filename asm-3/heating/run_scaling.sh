@@ -8,11 +8,13 @@
 #
 # Portability
 # -----------
-# The same script drives the 159.735 HPC node (Ubuntu, 32 cores) and a macOS
-# laptop. Nothing about the machine is hard coded: the core count is probed
-# at start up and the thread sweep, the plate sizes and the iteration budgets
-# are all derived from it. On a 10 core laptop it produces exactly the sweep
-# it always did; on the 32 core node it sweeps out to 32 threads.
+# The same script drives hpc-parallelgpu01 (Ubuntu, 8 cores), a macOS laptop,
+# and a larger many core machine such as CTCP, without being told which one it
+# is on. Nothing about the machine is hard coded: the core count is probed at
+# start up and the thread sweep, the plate sizes and the iteration budgets are
+# all derived from it. An 8 core node sweeps 1..8; a 10 core laptop gets
+# exactly the sweep it always did; a 32 core machine sweeps out to 32 threads
+# and picks up a larger plate as well.
 #
 # Knobs (all optional, all environment variables):
 #
@@ -213,8 +215,8 @@ THREADS_COARSE=$(coarse_threads "$NCORE" | tr '\n' ' ')
 # The budgets are set so that a *sequential* run takes about a second on a
 # fast core, which keeps each measurement short enough to dodge most of the
 # interference from other processes. On a many core machine that is not
-# enough: divided over 32 threads a one second run finishes in 30 ms, which
-# is short enough for the thread pool start up and the first touch page
+# enough: divided over (say) 32 threads a one second run finishes in 30 ms,
+# which is short enough for the thread pool start up and the first touch page
 # faults to be a large fraction of what is being timed. So the budget is
 # scaled up with the core count, keeping the shortest parallel runs above
 # roughly a tenth of a second.
@@ -234,9 +236,10 @@ strong_iters() {
       'BEGIN { r = 10000 * b / ((n/400)^2); printf "%d", (r < 1 ? 1 : r) }'
 }
 
-# Plate sizes for the strong study. A 400x400 plate cut over 32 threads gives
-# each thread a dozen rows, so the largest sizes are the interesting ones on a
-# big machine; 6400x6400 is added there. It needs about 550 MB at peak.
+# Plate sizes for the strong study. A 400x400 plate cut over 32 threads would
+# give each thread only a dozen rows, so the largest sizes are the interesting
+# ones on a big machine and 6400x6400 is added there (about 550 MB at peak).
+# On an 8 core node the four standard sizes are plenty.
 STRONG_SIZES="400 800 1600 3200"
 if [ "$NCORE" -ge 16 ] && [ "$MEMGB" -ge 4 ]; then
   STRONG_SIZES="$STRONG_SIZES 6400"

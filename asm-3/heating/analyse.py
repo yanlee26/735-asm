@@ -311,17 +311,25 @@ n = sizes("sync")[0]
 r1 = row_for("sync", "seq", "seq", n, 1)
 it = r1["iters"]
 emit(f"### Synchronisation cost\n")
-emit(f"A {n}x{n} plate for {it:,} iterations. The arithmetic is almost free "
-     "at this size, so whatever the parallel run costs above the sequential "
-     "one is the price of the two barriers and the reduction.\n")
-emit("| threads | time (s) | overhead over sequential (us/iteration) |")
-emit("|---:|---:|---:|")
+emit(f"A {n}x{n} plate for {it:,} iterations -- small enough that the "
+     "arithmetic is cheap and the run is dominated by the two barriers and "
+     "the reduction.\n")
+emit("The overhead below is what the parallel run costs *above perfectly "
+     "divided work*, `t(p) - t_seq/p`. Subtracting `t_seq/p` rather than "
+     "`t_seq` is what makes this portable between machines: where a core is "
+     f"slow enough that even a {n}x{n} sweep is not free, splitting the "
+     "arithmetic over `p` threads saves real time, and measuring against "
+     "`t_seq` would net that saving off against the barrier cost and report "
+     "a negative overhead.\n")
+emit("| threads | time (s) | perfectly divided (s) | overhead (us/iteration) |")
+emit("|---:|---:|---:|---:|")
 sp, so = [], []
 for p in threadlist("sync", n):
     t = best("sync", "omp", "static", n, p)
-    ov = 1e6 * (t - r1["time"]) / it
+    ideal = r1["time"] / p
+    ov = 1e6 * (t - ideal) / it
     sp.append(p); so.append(ov)
-    emit(f"| {p} | {t:.4f} | {ov:.2f} |")
+    emit(f"| {p} | {t:.4f} | {ideal:.4f} | {ov:.2f} |")
 emit()
 
 emit("### Load balance: static vs dynamic partition\n")

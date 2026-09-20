@@ -1,0 +1,8 @@
+machine : Intel(R) Xeon(R) Gold 6242R CPU @ 3.10GHz, 8 logical CPUs (8 physical cores)
+memory  : 31 GB
+os      : Ubuntu 24.04.4 LTS (kernel 6.8.0-139-generic, x86_64)
+compiler: g++ (Ubuntu 13.3.0-6ubuntu2~24.04.1) 13.3.0
+openmp  : OMP_PROC_BIND=close OMP_PLACES=cores OMP_WAIT_POLICY=unset
+sweep   : up to 8 threads, budget x1, 3 repeats (analysis uses the fastest)
+started : Sun 13 Sep 2026 20:04:46 NZST
+load at start: { 0.04 0.24 0.14 }

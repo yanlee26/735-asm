@@ -1,15 +1,19 @@
 # Scaling results
 
 ```
-machine : Apple M5, 10 cores (4 performance + 6 efficiency)
+machine : Apple M5, 10 logical CPUs (10 physical cores)
 memory  : 32 GB
 os      : macOS 26.3 (arm64)
 compiler: Apple clang version 21.0.0 (clang-2100.1.1.101)
-repeats : 5 (analysis uses the fastest)
-load at start: { 3.04 5.63 5.94 }
+openmp  : OMP_PROC_BIND=unset OMP_PLACES=unset OMP_WAIT_POLICY=unset
+sweep   : up to 10 threads, budget x1, 5 repeats (analysis uses the fastest)
+cores   : 4 performance + 6 efficiency
+marker  : 4 performance cores
+started : Sun Sep 20 17:31:49 NZST 2026
+load at start: { 1.76 2.10 2.28 }
 ```
 
-Measurement spread across repeats (median over fastest): median 1%, worst 11%. The fastest run of each configuration is used below.
+Measurement spread across repeats (median over fastest): median 1%, worst 8%. The fastest run of each configuration is used below.
 
 ## 1. The parallel version gives the same answer
 
@@ -17,10 +21,10 @@ Every run below was taken all the way to convergence. `iterations` and `image ha
 
 | npix | iterations | distinct iteration counts | distinct image hashes | runs compared |
 |---:|---:|---:|---:|---:|
-| 100 | 3,711 | 1 | 1 | 30 |
-| 200 | 13,543 | 1 | 1 | 30 |
-| 400 | 47,875 | 1 | 1 | 30 |
-| 800 | 165,265 | 1 | 1 | 13 |
+| 100 | 3,711 | 1 | 1 | 22 |
+| 200 | 13,543 | 1 | 1 | 22 |
+| 400 | 47,875 | 1 | 1 | 22 |
+| 800 | 165,265 | 1 | 1 | 3 |
 
 **Every configuration needed the identical number of iterations and produced a bit-identical image.**
 
@@ -28,77 +32,77 @@ Every run below was taken all the way to convergence. `iterations` and `image ha
 
 Fixed plate, fixed number of iterations, varying thread count. Speedup is against the *sequential program*, not against the parallel program on one thread.
 
-### 400x400, 10000 iterations -- sequential 0.762 s
+### 400x400, 10000 iterations -- sequential 0.784 s
 
 | threads | static t (s) | speedup | efficiency | Karp-Flatt e | busy% | dynamic t (s) | speedup |
 |---:|---:|---:|---:|---:|---:|---:|---:|
-| 1 | 0.761 | 1.00 | 1.00 | - | 100% | 0.764 | 1.00 |
-| 2 | 0.518 | 1.47 | 0.74 | 0.358 | 80% | 0.526 | 1.45 |
-| 3 | 0.405 | 1.88 | 0.63 | 0.296 | 64% | 0.411 | 1.85 |
-| 4 | 0.386 | 1.97 | 0.49 | 0.342 | 54% | 0.386 | 1.97 |
-| 5 | 0.540 | 1.41 | 0.28 | 0.635 | 35% | 0.465 | 1.64 |
-| 6 | 0.559 | 1.36 | 0.23 | 0.680 | 29% | 0.530 | 1.44 |
-| 7 | 0.575 | 1.33 | 0.19 | 0.713 | 24% | 0.582 | 1.31 |
-| 8 | 0.578 | 1.32 | 0.16 | 0.724 | 21% | 0.610 | 1.25 |
-| 9 | 0.624 | 1.22 | 0.14 | 0.795 | 18% | 0.657 | 1.16 |
-| 10 | 0.705 | 1.08 | 0.11 | 0.916 | 17% | 0.731 | 1.04 |
+| 1 | 0.767 | 1.02 | 1.02 | - | 100% | 0.769 | 1.02 |
+| 2 | 0.520 | 1.51 | 0.75 | 0.327 | 80% | 0.524 | 1.50 |
+| 3 | 0.407 | 1.92 | 0.64 | 0.279 | 64% | 0.420 | 1.87 |
+| 4 | 0.386 | 2.03 | 0.51 | 0.323 | 54% | 0.385 | 2.04 |
+| 5 | 0.539 | 1.45 | 0.29 | 0.610 | 35% | 0.472 | 1.66 |
+| 6 | 0.560 | 1.40 | 0.23 | 0.658 | 29% | 0.522 | 1.50 |
+| 7 | 0.574 | 1.37 | 0.20 | 0.688 | 24% | 0.585 | 1.34 |
+| 8 | 0.577 | 1.36 | 0.17 | 0.699 | 21% | 0.605 | 1.29 |
+| 9 | 0.627 | 1.25 | 0.14 | 0.775 | 18% | 0.653 | 1.20 |
+| 10 | 0.700 | 1.12 | 0.11 | 0.881 | 17% | 0.730 | 1.07 |
 
-Best static speedup **1.97x at 4 threads**.
- Least squares Amdahl serial fraction **f = 0.646**, so the ceiling 1/f is about **1.5x**.
+Best static speedup **2.03x at 4 threads**.
+ Least squares Amdahl serial fraction **f = 0.624**, so the ceiling 1/f is about **1.6x**.
 
-### 800x800, 2500 iterations -- sequential 0.780 s
+### 800x800, 2500 iterations -- sequential 0.789 s
 
 | threads | static t (s) | speedup | efficiency | Karp-Flatt e | busy% | dynamic t (s) | speedup |
 |---:|---:|---:|---:|---:|---:|---:|---:|
-| 1 | 0.781 | 1.00 | 1.00 | - | 100% | 0.784 | 1.00 |
-| 2 | 0.425 | 1.84 | 0.92 | 0.088 | 94% | 0.431 | 1.81 |
-| 3 | 0.314 | 2.49 | 0.83 | 0.103 | 87% | 0.312 | 2.50 |
-| 4 | 0.263 | 2.96 | 0.74 | 0.116 | 80% | 0.261 | 2.99 |
-| 5 | 0.344 | 2.27 | 0.45 | 0.301 | 55% | 0.261 | 2.99 |
-| 6 | 0.344 | 2.27 | 0.38 | 0.328 | 46% | 0.287 | 2.72 |
-| 7 | 0.324 | 2.41 | 0.34 | 0.318 | 41% | 0.303 | 2.57 |
-| 8 | 0.305 | 2.56 | 0.32 | 0.303 | 39% | 0.310 | 2.52 |
-| 9 | 0.316 | 2.47 | 0.27 | 0.331 | 35% | 0.306 | 2.55 |
-| 10 | 0.316 | 2.47 | 0.25 | 0.339 | 34% | 0.310 | 2.52 |
+| 1 | 0.783 | 1.01 | 1.01 | - | 100% | 0.784 | 1.01 |
+| 2 | 0.426 | 1.85 | 0.93 | 0.079 | 94% | 0.431 | 1.83 |
+| 3 | 0.323 | 2.45 | 0.82 | 0.113 | 86% | 0.322 | 2.45 |
+| 4 | 0.263 | 3.00 | 0.75 | 0.111 | 80% | 0.267 | 2.95 |
+| 5 | 0.345 | 2.29 | 0.46 | 0.297 | 55% | 0.259 | 3.05 |
+| 6 | 0.344 | 2.29 | 0.38 | 0.323 | 46% | 0.287 | 2.75 |
+| 7 | 0.325 | 2.43 | 0.35 | 0.313 | 41% | 0.303 | 2.61 |
+| 8 | 0.304 | 2.59 | 0.32 | 0.298 | 39% | 0.310 | 2.54 |
+| 9 | 0.312 | 2.53 | 0.28 | 0.320 | 35% | 0.313 | 2.52 |
+| 10 | 0.337 | 2.34 | 0.23 | 0.364 | 33% | 0.322 | 2.45 |
 
-Best static speedup **2.96x at 4 threads**.
+Best static speedup **3.00x at 4 threads**.
  Least squares Amdahl serial fraction **f = 0.296**, so the ceiling 1/f is about **3.4x**.
 
-### 1600x1600, 620 iterations -- sequential 0.833 s
+### 1600x1600, 625 iterations -- sequential 0.848 s
 
 | threads | static t (s) | speedup | efficiency | Karp-Flatt e | busy% | dynamic t (s) | speedup |
 |---:|---:|---:|---:|---:|---:|---:|---:|
-| 1 | 0.833 | 1.00 | 1.00 | - | 100% | 0.837 | 0.99 |
-| 2 | 0.435 | 1.92 | 0.96 | 0.044 | 98% | 0.437 | 1.90 |
-| 3 | 0.309 | 2.70 | 0.90 | 0.056 | 95% | 0.313 | 2.66 |
-| 4 | 0.244 | 3.42 | 0.85 | 0.057 | 93% | 0.243 | 3.42 |
-| 5 | 0.291 | 2.86 | 0.57 | 0.187 | 69% | 0.236 | 3.52 |
-| 6 | 0.270 | 3.08 | 0.51 | 0.189 | 65% | 0.217 | 3.84 |
-| 7 | 0.243 | 3.43 | 0.49 | 0.174 | 64% | 0.215 | 3.87 |
-| 8 | 0.224 | 3.71 | 0.46 | 0.165 | 62% | 0.200 | 4.16 |
-| 9 | 0.237 | 3.51 | 0.39 | 0.196 | 55% | 0.197 | 4.23 |
-| 10 | 0.233 | 3.58 | 0.36 | 0.200 | 54% | 0.197 | 4.22 |
+| 1 | 0.843 | 1.01 | 1.01 | - | 100% | 0.845 | 1.00 |
+| 2 | 0.448 | 1.89 | 0.95 | 0.057 | 98% | 0.447 | 1.90 |
+| 3 | 0.313 | 2.71 | 0.90 | 0.054 | 96% | 0.318 | 2.66 |
+| 4 | 0.252 | 3.36 | 0.84 | 0.063 | 93% | 0.253 | 3.35 |
+| 5 | 0.294 | 2.89 | 0.58 | 0.183 | 69% | 0.246 | 3.44 |
+| 6 | 0.274 | 3.09 | 0.51 | 0.188 | 65% | 0.222 | 3.82 |
+| 7 | 0.246 | 3.45 | 0.49 | 0.172 | 65% | 0.220 | 3.85 |
+| 8 | 0.230 | 3.68 | 0.46 | 0.168 | 63% | 0.205 | 4.14 |
+| 9 | 0.240 | 3.53 | 0.39 | 0.194 | 56% | 0.206 | 4.11 |
+| 10 | 0.239 | 3.55 | 0.35 | 0.202 | 54% | 0.203 | 4.17 |
 
-Best static speedup **3.71x at 8 threads**.
- Least squares Amdahl serial fraction **f = 0.177**, so the ceiling 1/f is about **5.7x**.
+Best static speedup **3.68x at 8 threads**.
+ Least squares Amdahl serial fraction **f = 0.177**, so the ceiling 1/f is about **5.6x**.
 
-### 3200x3200, 155 iterations -- sequential 0.843 s
+### 3200x3200, 156 iterations -- sequential 0.860 s
 
 | threads | static t (s) | speedup | efficiency | Karp-Flatt e | busy% | dynamic t (s) | speedup |
 |---:|---:|---:|---:|---:|---:|---:|---:|
-| 1 | 0.843 | 1.00 | 1.00 | - | 100% | 0.846 | 1.00 |
-| 2 | 0.439 | 1.92 | 0.96 | 0.042 | 98% | 0.433 | 1.94 |
-| 3 | 0.311 | 2.71 | 0.90 | 0.053 | 98% | 0.310 | 2.72 |
-| 4 | 0.241 | 3.50 | 0.88 | 0.047 | 96% | 0.243 | 3.47 |
-| 5 | 0.280 | 3.01 | 0.60 | 0.165 | 73% | 0.233 | 3.61 |
-| 6 | 0.244 | 3.46 | 0.58 | 0.147 | 75% | 0.205 | 4.12 |
-| 7 | 0.214 | 3.95 | 0.56 | 0.129 | 76% | 0.197 | 4.27 |
-| 8 | 0.194 | 4.35 | 0.54 | 0.120 | 77% | 0.182 | 4.62 |
-| 9 | 0.200 | 4.22 | 0.47 | 0.142 | 69% | 0.175 | 4.82 |
-| 10 | 0.194 | 4.35 | 0.43 | 0.145 | 69% | 0.174 | 4.85 |
+| 1 | 0.850 | 1.01 | 1.01 | - | 100% | 0.851 | 1.01 |
+| 2 | 0.455 | 1.89 | 0.94 | 0.059 | 98% | 0.458 | 1.88 |
+| 3 | 0.309 | 2.78 | 0.93 | 0.040 | 98% | 0.316 | 2.72 |
+| 4 | 0.249 | 3.45 | 0.86 | 0.053 | 95% | 0.248 | 3.47 |
+| 5 | 0.284 | 3.02 | 0.60 | 0.163 | 72% | 0.238 | 3.62 |
+| 6 | 0.246 | 3.50 | 0.58 | 0.143 | 74% | 0.213 | 4.03 |
+| 7 | 0.218 | 3.94 | 0.56 | 0.130 | 76% | 0.201 | 4.29 |
+| 8 | 0.199 | 4.33 | 0.54 | 0.121 | 77% | 0.186 | 4.63 |
+| 9 | 0.203 | 4.24 | 0.47 | 0.140 | 70% | 0.177 | 4.85 |
+| 10 | 0.195 | 4.40 | 0.44 | 0.141 | 69% | 0.173 | 4.97 |
 
-Best static speedup **4.35x at 8 threads**.
- Least squares Amdahl serial fraction **f = 0.134**, so the ceiling 1/f is about **7.5x**.
+Best static speedup **4.40x at 10 threads**.
+ Least squares Amdahl serial fraction **f = 0.132**, so the ceiling 1/f is about **7.5x**.
 
 ### The small end, from the runs to convergence
 
@@ -106,10 +110,10 @@ These are complete runs of the real program, so they show what a user would actu
 
 | npix | iterations | sequential (s) | best parallel (s) | threads | speedup |
 |---:|---:|---:|---:|---:|---:|
-| 100 | 3,711 | 0.016 | 0.016 (dynamic) | 1 | 1.00 |
-| 200 | 13,543 | 0.243 | 0.242 (static) | 1 | 1.01 |
-| 400 | 47,875 | 3.580 | 1.884 (dynamic) | 4 | 1.90 |
-| 800 | 165,265 | 51.883 | 17.711 (static) | 4 | 2.93 |
+| 100 | 3,711 | 0.016 | 0.016 (static) | 1 | 1.02 |
+| 200 | 13,543 | 0.251 | 0.249 (static) | 1 | 1.01 |
+| 400 | 47,875 | 3.614 | 1.864 (static) | 4 | 1.94 |
+| 800 | 165,265 | 51.929 | 21.261 (dynamic) | 10 | 2.44 |
 
 ![strong scaling](strong_scaling.png)
 
@@ -119,15 +123,13 @@ The plate side grows as `400*sqrt(p)`, so the pixels per thread -- and so the ar
 
 | p | npix | pixels/thread | sequential (s) | static (s) | scaled speedup | dynamic (s) | scaled speedup |
 |---:|---:|---:|---:|---:|---:|---:|---:|
-| 1 | 400 | 160,000 | 0.121 | 0.118 | 1.03 | 0.116 | 1.05 |
-| 2 | 566 | 160,178 | 0.230 | 0.135 | 1.70 | 0.138 | 1.67 |
-| 3 | 693 | 160,083 | 0.348 | 0.147 | 2.36 | 0.149 | 2.35 |
-| 4 | 800 | 160,000 | 0.476 | 0.159 | 3.00 | 0.157 | 3.04 |
-| 6 | 980 | 160,066 | 0.710 | 0.266 | 2.66 | 0.217 | 3.27 |
-| 8 | 1131 | 159,895 | 0.941 | 0.288 | 3.27 | 0.269 | 3.50 |
-| 10 | 1265 | 160,022 | 1.174 | 0.371 | 3.16 | 0.329 | 3.57 |
+| 1 | 400 | 160,000 | 0.118 | 0.115 | 1.02 | 0.116 | 1.01 |
+| 2 | 566 | 160,178 | 0.234 | 0.136 | 1.72 | 0.138 | 1.70 |
+| 4 | 800 | 160,000 | 0.469 | 0.159 | 2.96 | 0.161 | 2.92 |
+| 8 | 1131 | 159,895 | 0.974 | 0.310 | 3.15 | 0.277 | 3.51 |
+| 10 | 1265 | 160,022 | 1.202 | 0.379 | 3.17 | 0.321 | 3.74 |
 
-Fitting Gustafson's `S = p - a(p-1)`: **a = 0.509** for the static partition, **a = 0.480** for the dynamic one.
+Fitting Gustafson's `S = p - a(p-1)`: **a = 0.521** for the static partition, **a = 0.500** for the dynamic one.
 
 ![weak scaling](weak_scaling.png)
 
@@ -135,20 +137,22 @@ Fitting Gustafson's `S = p - a(p-1)`: **a = 0.509** for the static partition, **
 
 ### Synchronisation cost
 
-A 64x64 plate for 1,672 iterations. The arithmetic is almost free at this size, so whatever the parallel run costs above the sequential one is the price of the two barriers and the reduction.
+A 64x64 plate for 1,672 iterations -- small enough that the arithmetic is cheap and the run is dominated by the two barriers and the reduction.
 
-| threads | time (s) | overhead over sequential (us/iteration) |
-|---:|---:|---:|
-| 1 | 0.0032 | 0.03 |
-| 2 | 0.0167 | 8.12 |
-| 3 | 0.0220 | 11.25 |
-| 4 | 0.0277 | 14.66 |
-| 5 | 0.0431 | 23.87 |
-| 6 | 0.0577 | 32.65 |
-| 7 | 0.0652 | 37.12 |
-| 8 | 0.0728 | 41.67 |
-| 9 | 0.0819 | 47.08 |
-| 10 | 0.1017 | 58.95 |
+The overhead below is what the parallel run costs *above perfectly divided work*, `t(p) - t_seq/p`. Subtracting `t_seq/p` rather than `t_seq` is what makes this portable between machines: where a core is slow enough that even a 64x64 sweep is not free, splitting the arithmetic over `p` threads saves real time, and measuring against `t_seq` would net that saving off against the barrier cost and report a negative overhead.
+
+| threads | time (s) | perfectly divided (s) | overhead (us/iteration) |
+|---:|---:|---:|---:|
+| 1 | 0.0033 | 0.0032 | 0.07 |
+| 2 | 0.0159 | 0.0016 | 8.56 |
+| 3 | 0.0225 | 0.0011 | 12.83 |
+| 4 | 0.0279 | 0.0008 | 16.18 |
+| 5 | 0.0349 | 0.0006 | 20.47 |
+| 6 | 0.0519 | 0.0005 | 30.71 |
+| 7 | 0.0624 | 0.0005 | 37.07 |
+| 8 | 0.0683 | 0.0004 | 40.60 |
+| 9 | 0.0717 | 0.0004 | 42.69 |
+| 10 | 0.0815 | 0.0003 | 48.58 |
 
 ### Load balance: static vs dynamic partition
 
@@ -159,15 +163,15 @@ Plate 3200x3200:
 | threads | static busy% | static busiest/idlest | dynamic busy% | dynamic busiest/idlest |
 |---:|---:|---:|---:|---:|
 | 1 | 100% | 100% / 100% | 100% | 100% / 100% |
-| 2 | 98% | 100% / 97% | 99% | 99% / 98% |
-| 3 | 98% | 98% / 97% | 97% | 98% / 96% |
-| 4 | 96% | 98% / 92% | 97% | 97% / 95% |
-| 5 | 73% | 97% / 65% | 89% | 96% / 84% |
-| 6 | 75% | 96% / 62% | 91% | 95% / 86% |
-| 7 | 76% | 96% / 61% | 87% | 95% / 83% |
-| 8 | 77% | 94% / 58% | 88% | 94% / 82% |
-| 9 | 69% | 86% / 49% | 87% | 92% / 81% |
-| 10 | 69% | 85% / 48% | 86% | 90% / 80% |
+| 2 | 98% | 100% / 97% | 98% | 99% / 98% |
+| 3 | 98% | 99% / 97% | 97% | 98% / 96% |
+| 4 | 95% | 97% / 92% | 96% | 97% / 95% |
+| 5 | 72% | 97% / 64% | 89% | 96% / 84% |
+| 6 | 74% | 97% / 61% | 90% | 93% / 87% |
+| 7 | 76% | 95% / 61% | 87% | 95% / 83% |
+| 8 | 77% | 94% / 59% | 88% | 94% / 80% |
+| 9 | 70% | 86% / 50% | 87% | 92% / 80% |
+| 10 | 69% | 85% / 47% | 86% | 91% / 80% |
 
 ![overhead and balance](overhead_balance.png)
 
