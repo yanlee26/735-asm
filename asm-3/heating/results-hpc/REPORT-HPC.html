@@ -818,7 +818,7 @@ gets</strong>. It is 0.027 at 400x400 and 0.010 at 800x800, so the small
 plate reaches a ceiling of 37x while the larger one would in principle
 run to 97x. Neither ceiling is anywhere near being tested by eight
 cores, which is precisely why both scale well here. The same program on
-the same sizes hit fitted <code>f</code> between 0.13 and 0.65 on the
+the same sizes hit fitted <code>f</code> between 0.13 and 0.62 on the
 laptop (section 9), and the difference is not the algorithm.</p>
 <p>Two honest qualifications:</p>
 <ul>
@@ -1369,42 +1369,42 @@ desktop</td>
 <tr>
 <td>Best speedup (3200x3200)</td>
 <td style="text-align: right;"><strong>7.30x</strong> on 8</td>
-<td style="text-align: right;">4.35x static / 4.85x dynamic on 8–10</td>
+<td style="text-align: right;">4.40x static / 4.97x dynamic on 10</td>
 </tr>
 <tr>
 <td>Efficiency at full machine</td>
 <td style="text-align: right;"><strong>91%</strong></td>
-<td style="text-align: right;">43%</td>
+<td style="text-align: right;">44%</td>
 </tr>
 <tr>
 <td>Fitted Amdahl <code>f</code>, 400x400</td>
 <td style="text-align: right;">0.027</td>
-<td style="text-align: right;">0.646</td>
+<td style="text-align: right;">0.624</td>
 </tr>
 <tr>
 <td>Fitted Amdahl <code>f</code>, 3200x3200</td>
 <td style="text-align: right;">0.015</td>
-<td style="text-align: right;">0.134</td>
+<td style="text-align: right;">0.132</td>
 </tr>
 <tr>
 <td>Barrier cost per extra thread</td>
 <td style="text-align: right;"><strong>0.24 us</strong></td>
-<td style="text-align: right;">6.4 us</td>
+<td style="text-align: right;">5.2 us</td>
 </tr>
 <tr>
 <td>Gustafson <code>a</code></td>
 <td style="text-align: right;"><strong>0.080</strong></td>
-<td style="text-align: right;">0.51</td>
+<td style="text-align: right;">0.52</td>
 </tr>
 <tr>
 <td>Best weak-scaling speedup</td>
 <td style="text-align: right;"><strong>7.03x</strong> on 8</td>
-<td style="text-align: right;">3.57x on 10</td>
+<td style="text-align: right;">3.74x on 10</td>
 </tr>
 <tr>
 <td>Speedup at 100x100</td>
 <td style="text-align: right;">3.79x</td>
-<td style="text-align: right;">1.00x (parallelism does not pay)</td>
+<td style="text-align: right;">1.02x (parallelism does not pay)</td>
 </tr>
 <tr>
 <td>Better partition at full machine</td>
@@ -1428,7 +1428,7 @@ well. But the fitted <code>f</code> differs by a factor of twenty at
 fraction is not a property of a program — it is a property of a program
 on a machine, and quoting one without the other says very little.</p>
 <p><strong>Almost the whole difference is the barrier.</strong> 0.24
-microseconds per extra thread against 6.4 is a factor of 27, and it is
+microseconds per extra thread against 5.2 is a factor of 22, and it is
 what decides whether a 100x100 plate is worth parallelising. Some of
 that gap is <code>libgomp</code> on pinned, dedicated, homogeneous cores
 against <code>libomp</code> on a loaded laptop with asymmetric cores,
@@ -1436,13 +1436,13 @@ and some of it is that a spin-wait barrier behaves badly when the OS may
 preempt a thread or park it on a slow core. The distinction matters: the
 node’s advantage here is not that its cores are faster. They are not —
 the M5 runs the <em>sequential</em> kernel about four and a half times
-faster per iteration than this Xeon does (5,436 us against 24,863 us per
+faster per iteration than this Xeon does (5,510 us against 24,863 us per
 iteration at 3200x3200). The node wins because its cores cooperate
 cheaply.</p>
 <p><strong>The right engineering decision reverses.</strong> With every
 core in use, the static partition is 2.8–11.1% faster on this node at
 all four plate sizes. On the laptop it is the dynamic partition that is
-ahead — by 18.0% at 1600x1600 and 11.6% at 3200x3200, the sizes where
+ahead — by 15.0% at 1600x1600 and 11.4% at 3200x3200, the sizes where
 the slow cores have enough work to fall behind on. (At 400x400 and
 800x800 the laptop’s two partitions are within a few percent of each
 other in either direction: there the bottleneck is the barrier, not the
@@ -1488,7 +1488,7 @@ every barrier. An adaptive load balancer earns its keep only where there
 is imbalance to correct, and on this machine there is none.</p></li>
 <li><p><strong>A serial fraction is a property of a program on a
 machine.</strong> The same source gives <code>f = 0.015</code> here and
-<code>f = 0.134</code> on the laptop at the same plate size, and the
+<code>f = 0.132</code> on the laptop at the same plate size, and the
 better partition strategy reverses between the two. Both reports’
 conclusions are correct; neither transfers.</p></li>
 <li><p>If more speedup were needed, the next steps would be algorithmic
@@ -1522,7 +1522,7 @@ Every number quoted in section 7 comes from one of those two files.</p>
 file stands alone:</p>
 <div class="sourceCode" id="cb8"><pre class="sourceCode bash"><code class="sourceCode bash"><span id="cb8-1"><a href="#cb8-1" aria-hidden="true" tabindex="-1"></a><span class="ex">pandoc</span> REPORT-HPC.md <span class="at">-s</span> <span class="at">--embed-resources</span> <span class="at">--css</span><span class="op">=</span>results/report.css <span class="dt">\</span></span>
 <span id="cb8-2"><a href="#cb8-2" aria-hidden="true" tabindex="-1"></a>       <span class="at">--metadata</span> title=<span class="st">&quot;159.735 Assignment 3 — HPC node&quot;</span> <span class="dt">\</span></span>
-<span id="cb8-3"><a href="#cb8-3" aria-hidden="true" tabindex="-1"></a>       <span class="at">-o</span> results/REPORT-HPC.html</span></code></pre></div>
+<span id="cb8-3"><a href="#cb8-3" aria-hidden="true" tabindex="-1"></a>       <span class="at">-o</span> results-hpc/REPORT-HPC.html</span></code></pre></div>
 <p>For a PDF, print that HTML from a browser —
 <code>results/report.css</code> carries an A4 <code>@page</code> rule
 and page-break hints for tables and figures. (No PDF engine is assumed

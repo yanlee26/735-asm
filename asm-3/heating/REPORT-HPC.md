@@ -410,7 +410,7 @@ how much work each processor gets**. It is 0.027 at 400x400 and 0.010 at
 800x800, so the small plate reaches a ceiling of 37x while the larger one
 would in principle run to 97x. Neither ceiling is anywhere near being tested
 by eight cores, which is precisely why both scale well here. The same program
-on the same sizes hit fitted `f` between 0.13 and 0.65 on the laptop
+on the same sizes hit fitted `f` between 0.13 and 0.62 on the laptop
 (section 9), and the difference is not the algorithm.
 
 Two honest qualifications:
@@ -669,14 +669,14 @@ informative result in either report.
 | | Xeon Gold 6242R, 8 cores | Apple M5, 10 cores |
 |---|---:|---:|
 | Cores | 8 equal, pinned, dedicated | 4 fast + 6 slow, shared with a desktop |
-| Best speedup (3200x3200) | **7.30x** on 8 | 4.35x static / 4.85x dynamic on 8–10 |
-| Efficiency at full machine | **91%** | 43% |
-| Fitted Amdahl `f`, 400x400 | 0.027 | 0.646 |
-| Fitted Amdahl `f`, 3200x3200 | 0.015 | 0.134 |
-| Barrier cost per extra thread | **0.24 us** | 6.4 us |
-| Gustafson `a` | **0.080** | 0.51 |
-| Best weak-scaling speedup | **7.03x** on 8 | 3.57x on 10 |
-| Speedup at 100x100 | 3.79x | 1.00x (parallelism does not pay) |
+| Best speedup (3200x3200) | **7.30x** on 8 | 4.40x static / 4.97x dynamic on 10 |
+| Efficiency at full machine | **91%** | 44% |
+| Fitted Amdahl `f`, 400x400 | 0.027 | 0.624 |
+| Fitted Amdahl `f`, 3200x3200 | 0.015 | 0.132 |
+| Barrier cost per extra thread | **0.24 us** | 5.2 us |
+| Gustafson `a` | **0.080** | 0.52 |
+| Best weak-scaling speedup | **7.03x** on 8 | 3.74x on 10 |
+| Speedup at 100x100 | 3.79x | 1.02x (parallelism does not pay) |
 | Better partition at full machine | **static, at every size** | **dynamic, at the large sizes** |
 | Converged image hash | identical | identical |
 
@@ -689,21 +689,21 @@ serial fraction is not a property of a program — it is a property of a program
 on a machine, and quoting one without the other says very little.
 
 **Almost the whole difference is the barrier.** 0.24 microseconds per extra
-thread against 6.4 is a factor of 27, and it is what decides whether a 100x100
+thread against 5.2 is a factor of 22, and it is what decides whether a 100x100
 plate is worth parallelising. Some of that gap is `libgomp` on pinned,
 dedicated, homogeneous cores against `libomp` on a loaded laptop with
 asymmetric cores, and some of it is that a spin-wait barrier behaves badly
 when the OS may preempt a thread or park it on a slow core. The distinction
 matters: the node's advantage here is not that its cores are faster. They are
 not — the M5 runs the *sequential* kernel about four and a half times faster
-per iteration than this Xeon does (5,436 us against 24,863 us per iteration at
+per iteration than this Xeon does (5,510 us against 24,863 us per iteration at
 3200x3200). The node wins because its cores cooperate
 cheaply.
 
 **The right engineering decision reverses.** With every core in use, the
 static partition is 2.8–11.1% faster on this node at all four plate sizes.
-On the laptop it is the dynamic partition that is ahead — by 18.0% at
-1600x1600 and 11.6% at 3200x3200, the sizes where the slow cores have enough
+On the laptop it is the dynamic partition that is ahead — by 15.0% at
+1600x1600 and 11.4% at 3200x3200, the sizes where the slow cores have enough
 work to fall behind on. (At 400x400 and 800x800 the laptop's two partitions
 are within a few percent of each other in either direction: there the
 bottleneck is the barrier, not the imbalance, and neither partition addresses
@@ -750,7 +750,7 @@ right half the time.
    correct, and on this machine there is none.
 
 6. **A serial fraction is a property of a program on a machine.** The same
-   source gives `f = 0.015` here and `f = 0.134` on the laptop at the same
+   source gives `f = 0.015` here and `f = 0.132` on the laptop at the same
    plate size, and the better partition strategy reverses between the two.
    Both reports' conclusions are correct; neither transfers.
 
