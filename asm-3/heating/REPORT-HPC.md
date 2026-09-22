@@ -2,8 +2,6 @@
 ## Parallel Solution of the Heat Distribution Problem
 ### Measured on the 159.735 HPC node
 
----
-
 ## 1. Platform
 
 | | |
@@ -39,8 +37,6 @@ does.
 
 The node was idle and the runs were pinned, so the measurements here are much
 cleaner than laptop measurements can be.
-
----
 
 ## 2. The problem and the numerical method
 

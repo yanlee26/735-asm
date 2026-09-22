@@ -1,8 +1,6 @@
 # 159.735 Assignment 3
 ## Parallel Solution of the Heat Distribution Problem
 
----
-
 ## 1. Platform
 
 | | |
@@ -27,8 +25,6 @@ homogeneous 8-core Xeon Gold 6242R running Ubuntu and GCC — and that study is
 written up separately in [`REPORT-HPC.md`](REPORT-HPC.md). Where a conclusion
 below depends on this machine's core layout rather than on the program, the
 node's numbers are the control; its section 9 puts the two side by side.
-
----
 
 ## 2. The problem and the numerical method
 
