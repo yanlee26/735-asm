@@ -14,17 +14,16 @@
 | OpenMP | LLVM `libomp` (Homebrew), `-Xpreprocessor -fopenmp -lomp` |
 | FITS | cfitsio 4.7.0 (Homebrew) |
 
-The heterogeneous core layout matters throughout this report. The machine
-reports ten cores, but they are not ten of the same thing: the four
-performance cores are several times faster than the six efficiency cores.
-Almost every departure from ideal scaling measured below traces back to that
-fact.
+The heterogeneous core layout is relevant throughout this report. The
+machine reports ten cores, but the four performance cores are several times
+faster than the six efficiency cores. Most of the departures from ideal
+scaling measured below can be traced to this.
 
-The same source tree was also measured on the 159.735 HPC node — a
-homogeneous 8-core Xeon Gold 6242R running Ubuntu and GCC — and that study is
+The same source tree was also measured on the 159.735 HPC node, a
+homogeneous 8-core Xeon Gold 6242R running Ubuntu and GCC. That study is
 written up separately in [`REPORT-HPC.md`](REPORT-HPC.md). Where a conclusion
 below depends on this machine's core layout rather than on the program, the
-node's numbers are the control; its section 9 puts the two side by side.
+node's numbers act as a control. Its section 9 puts the two side by side.
 
 ## 2. The problem and the numerical method
 
@@ -40,7 +39,7 @@ which is Jacobi iteration: the whole new image `g` is computed from the old
 image `h`, and only then does `g` become the current image.
 
 The plate edge, the cold finger heat sink and the printed circuit components
-are Dirichlet boundary conditions — they hold a fixed temperature for the
+are Dirichlet boundary conditions: they hold a fixed temperature for the
 whole run. They are drawn by `fix_boundaries2()` from the supplied
 `draw.hxx`, unmodified.
 
@@ -54,7 +53,7 @@ requiring all `npix x npix` of them.
 The number of iterations this takes is not known in advance. Jacobi's
 convergence rate is set by the spectral radius of its iteration matrix,
 `cos(pi/(n+1)) ~ 1 - pi^2/2n^2`, which predicts an iteration count growing as
-`n^2`. The measured counts fit `n^1.83` -- slightly below `n^2` because the
+`n^2`. The measured counts fit `n^1.83`, slightly below `n^2` because the
 stopping test is an absolute threshold on the per-iteration *change*, and the
 change at a given error level is itself proportional to `1/n^2`, so the test
 is relatively easier to satisfy on a larger plate. Folding that in, the model
@@ -72,7 +71,7 @@ is relatively easier to satisfy on a larger plate. Folding that in, the model
 |---|---|
 | `heat.cpp` | sequential solution |
 | `heat_omp.cpp` | OpenMP parallel solution |
-| `heatutil.hxx` | **everything the two have in common** — the Jacobi sweep itself, the fixed-pixel mask, the row partitioning, the timer, the image hash |
+| `heatutil.hxx` | **everything the two have in common**: the Jacobi sweep itself, the fixed-pixel mask, the row partitioning, the timer, the image hash |
 | `makefile` | `make heat`, `make heat_omp`, or just `make` |
 | `run_scaling.sh`, `analyse.py` | the measurements and figures in this report |
 | `make_plate_figure.py` | renders the FITS output as a picture |
@@ -80,12 +79,11 @@ is relatively easier to satisfy on a larger plate. Folding that in, the model
 `array.hxx`, `arrayff.hxx`, `fits.hxx`, `fitsfile.h`, `fitsfile.cpp` and
 `draw.hxx` are used exactly as supplied.
 
-Putting the kernel in a shared header is not tidiness for its own sake. The
-sequential and parallel programs call **the same `jacobi_sweep()` function**,
-so a given pixel goes through the identical arithmetic in the identical order
-whichever program computes it. That is the mechanism behind the
-bit-identical results in section 5 — it is a structural property, not
-something that happens to hold.
+The kernel lives in a shared header so that both programs use it directly.
+The sequential and parallel programs call **the same `jacobi_sweep()`
+function**, so a given pixel goes through the identical arithmetic in the
+identical order whichever program computes it. This is why the results in
+section 5 are bit-identical.
 
 ```bash
 make
@@ -98,7 +96,7 @@ Options: `-p N` threads, `-t TOL` tolerance, `-o FILE` output (`none` to skip
 file writing when timing), `-i N` stop after N iterations (a benchmarking aid
 only), `-d` dynamic partition.
 
-### One optimisation worth describing
+### One optimisation
 
 The obvious way to hold the circuit at a fixed temperature is to call
 `fix_boundaries2()` on the new image every iteration, re-drawing the whole
@@ -108,9 +106,9 @@ supplied drawing code on a scratch array pre-filled with a sentinel value;
 any pixel that is no longer the sentinel afterwards is a fixed pixel. The
 sweep then simply carries those pixels through unchanged.
 
-This is numerically identical — the same pixels end up with the same values —
-but it removes a serial O(n^2) section from the middle of the iteration loop,
-which would otherwise have put a hard floor under the parallel runtime.
+This is numerically identical (the same pixels end up with the same values),
+but it removes a serial O(n^2) section from the middle of the iteration loop.
+That section would otherwise have put a floor under the parallel runtime.
 
 Both programs also **swap the two image buffers** rather than copying `g`
 over `h`, which removes `n^2` float copies per iteration.
@@ -138,12 +136,11 @@ it can be because a thread revisits its own rows every iteration.
 `nrows / (4 * nthreads)` and threads take the next chunk from a shared counter
 via `#pragma omp atomic capture`. This costs one atomic increment per chunk
 and gives up some locality, but a slow thread simply takes fewer chunks. On a
-machine with four fast cores and six slow ones, that turns out to matter a
-great deal (section 7.3).
+machine with four fast cores and six slow ones this has a large effect
+(section 7.3).
 
-Both were implemented because the textbook answer — a static block partition
-— is provably the right choice on a homogeneous machine and demonstrably not
-the right choice on this one.
+Both were implemented because a static block partition is the right choice on
+a homogeneous machine, but not on this one.
 
 ### 4.2 The thread pool
 
@@ -159,8 +156,8 @@ The pool is created **once**, outside the iteration loop:
 }
 ```
 
-The alternative — a `#pragma omp parallel for` inside the loop — would fork
-and join a team 165,000 times for an 800x800 plate.
+The alternative, a `#pragma omp parallel for` inside the loop, would fork and
+join a team 165,000 times for an 800x800 plate.
 
 ### 4.3 Synchronisation
 
@@ -196,10 +193,10 @@ while one thread swaps the pointers, every other thread is parked at that
 barrier and cannot be reading either image. After it, all threads see the
 swapped buffers and the same termination verdict.
 
-A team-wide barrier is stronger than this problem strictly needs — a thread
-only genuinely depends on its two neighbours — but `libomp`'s barrier is a
-tuned, actively-spinning tree barrier, and hand-rolled neighbour flags would
-have to reimplement that badly. Section 7.2 measures what it costs.
+A team-wide barrier is stronger than this problem strictly needs, since a
+thread only depends on its two neighbours, but `libomp`'s barrier is a tuned,
+actively-spinning tree barrier, and hand-rolled neighbour flags would have to
+reimplement that badly. Section 7.2 measures what it costs.
 
 ### 4.4 Detecting convergence and terminating cleanly
 
@@ -215,24 +212,23 @@ struct PaddedCount { int n; char pad[CACHE_LINE - sizeof(int)]; };
 ```
 
 Packed together, ten counters would share one or two cache lines and the
-threads would spend their time bouncing those lines between cores — false
-sharing, and on a per-iteration counter it is expensive.
+threads would spend their time bouncing those lines between cores. That is
+false sharing, and on a per-iteration counter it is expensive.
 
 After barrier (1), one thread sums the slots and compares against
 `(npix-2)^2`. The verdict goes into **one shared `bool done`**, and every
 thread reads that same flag after barrier (2).
 
-That single shared flag is what makes termination clean. Every thread
+The single shared flag is what makes termination clean. Every thread
 evaluates `if (done) break;` on the same iteration, having read the same
 value after the same barrier. So either the whole team continues or the whole
 team leaves. No thread can exit early and leave a neighbour's halo row
-unwritten, and — the failure mode that actually bites in practice — no thread
-can be left waiting forever at a barrier that the rest of the team has
-already walked away from.
+unwritten, and no thread can be left waiting at a barrier that the rest of
+the team has already left.
 
 ### 4.5 Why the answer does not depend on the thread count
 
-Three properties combine:
+This follows from three properties:
 
 1. **Jacobi is partition-independent.** A new pixel value is a function of
    the *previous* image only. Splitting the rows between threads changes who
@@ -241,12 +237,11 @@ Three properties combine:
    four additions and the multiply happen in the same order, with the same
    float rounding, in both programs.
 3. **The convergence test is exact.** It is a count of integers reduced by
-   addition — no floating point rounding is involved in the stop decision, so
-   the stop happens on exactly the same iteration every time.
+   addition, so no floating point rounding is involved in the stop decision
+   and the stop happens on the same iteration every time.
 
-Consequently the parallel program does not merely produce a *similar* image
-in a *similar* number of iterations; it produces the identical image in the
-identical number of iterations, which is what section 5 verifies.
+The parallel program therefore produces the identical image in the identical
+number of iterations, which is what section 5 verifies.
 
 ---
 
@@ -269,37 +264,35 @@ with the OpenMP program at a range of thread counts, in both partition modes:
 **One iteration count and one image hash per plate size, across every
 configuration tested.** The requirement that the parallel program run in the
 same number of iterations as the sequential version and produce the same
-output is met exactly, not approximately.
+output is met.
 
 ---
 
 ## 6. How the timings were taken
 
-Two measurement problems had to be dealt with first, and both are worth
-recording because both produced confidently wrong numbers before they were
-noticed.
+Two measurement problems had to be dealt with first. Both produced wrong
+numbers before they were noticed, so both are recorded here.
 
 **`omp_get_wtime()` counts time the machine spends asleep.** LLVM's runtime
 implements it with `gettimeofday()`, which is wall clock time. This laptop is
 configured to sleep after one minute idle on battery, so an unattended
 benchmark reported runs of up to 4,893 seconds inside a suite that used about
-fifteen minutes of CPU — the sleep was being billed to whichever run happened
-to straddle it. Worse, the sequential program was using `steady_clock` while
-the parallel program used `omp_get_wtime()`, so the two were not even being
-timed by the same clock. Both programs now share one `wall_seconds()` helper
-built on the monotonic `steady_clock`, which does not advance across a system
-sleep, and the benchmark script re-executes itself under `caffeinate` so the
-machine cannot doze off mid-run.
+fifteen minutes of CPU. The sleep was being billed to whichever run happened
+to straddle it. The sequential program was also using `steady_clock` while
+the parallel program used `omp_get_wtime()`, so the two were not timed by the
+same clock. Both programs now share one `wall_seconds()` helper built on the
+monotonic `steady_clock`, which does not advance across a system sleep, and
+the benchmark script re-executes itself under `caffeinate` so the machine
+cannot sleep mid-run.
 
 **The machine has other work to do.** This is a laptop running a browser, an
-IDE and an office suite; the load average sat between 1.8 and 5.8 during the
-measurements. Each configuration is therefore measured five times with the
-repeats interleaved, and the **fastest** run is used, that being the reading
-least polluted by other processes. The load average is recorded alongside
-every measurement. Across all configurations the median run was 1% slower
-than the fastest and the worst was 8% slower, so the numbers below are
-repeatable to a few percent — good enough for the conclusions drawn, though
-not laboratory-grade.
+IDE and an office suite, and the load average sat between 1.8 and 5.8 during
+the measurements. Each configuration is therefore measured five times with
+the repeats interleaved, and the **fastest** run is used, that being the
+reading least affected by other processes. The load average is recorded
+alongside every measurement. Across all configurations the median run was 1%
+slower than the fastest and the worst was 8% slower, so the numbers below are
+repeatable to a few percent.
 
 Timing runs use a fixed iteration budget (`-i`) chosen so that a sequential
 run takes about a second. This only bounds how long a measurement takes; the
@@ -311,7 +304,7 @@ runs to convergence.
 
 ## 7. Results
 
-### 7.1 Strong scaling — Amdahl's law
+### 7.1 Strong scaling and Amdahl's law
 
 Fixed plate, varying thread count. Speedup is measured against the
 **sequential program**, not against the parallel program on one thread.
@@ -337,31 +330,29 @@ Selected detail for the 3200x3200 plate:
 | 8 | 0.199 | 4.33 | 0.54 | 77% |
 | 10 | 0.195 | 4.40 | 0.44 | 69% |
 
-**Does it obey Amdahl's law?** Yes, in the sense that matters: the speedup
-saturates rather than growing with `p`, and the measured curve is described
-well by `S(p) = 1 / (f + (1-f)/p)`. The fitted serial fraction falls
-steadily as the plate grows — 0.624, 0.296, 0.177, 0.132 — which is the
-central Amdahl prediction: **the same program has a different ceiling
-depending on how much work each processor is given.** At 400x400 the ceiling
-is about 1.6x no matter how many cores are thrown at it, and the measurements
-duly stop at 2.03x; at 3200x3200 the ceiling is about 7.5x.
+The speedup saturates rather than growing with `p`, and the measured curve is
+described well by `S(p) = 1 / (f + (1-f)/p)`. The fitted serial fraction
+falls steadily as the plate grows (0.624, 0.296, 0.177, 0.132). This is what
+Amdahl's law predicts: the ceiling depends on how much work each processor is
+given, so the same program has a different ceiling at each plate size. At
+400x400 the ceiling is about 1.6x however many cores are used, and the
+measurements stop at 2.03x. At 3200x3200 the ceiling is about 7.5x.
 
-Two honest qualifications:
+Two qualifications:
 
 - The `f` fitted here is not literally serial *code*. The only genuinely
   serial region in the program is the `single` block, which adds at most ten
-  integers. What `f` actually captures is **per-iteration overhead and load
-  imbalance**, which happen to have the same functional effect on the speedup
-  curve. Amdahl's law is being used here as a phenomenological description,
-  which is how it is normally used in practice, but it is worth being precise
-  about.
+  integers. What `f` captures is **per-iteration overhead and load
+  imbalance**, which have the same functional effect on the speedup curve.
+  Amdahl's law is used here as a phenomenological description rather than a
+  literal one.
 - The curve is not smooth. There is a pronounced **break between 4 and 5
-  threads** in every single measurement, and efficiency drops off a cliff
-  there — from 86% to 60% at 3200x3200. That is not noise and it is not
-  Amdahl; it is the fifth thread landing on an efficiency core. Section 7.3.
+  threads** in every measurement, and efficiency falls sharply there, from
+  86% to 60% at 3200x3200. The cause is the fifth thread landing on an
+  efficiency core rather than anything to do with Amdahl's law. See
+  section 7.3.
 
-At the small end, the parallel program is simply **slower** than the
-sequential one:
+At the small end, the parallel program is **slower** than the sequential one:
 
 | npix | iterations | sequential (s) | best parallel (s) | threads | speedup |
 |---:|---:|---:|---:|---:|---:|
@@ -371,15 +362,14 @@ sequential one:
 | 800 | 165,265 | 51.929 | 21.261 | 10 | 2.44 |
 
 For a 100x100 plate, running on ten threads takes **about twelve times
-longer** (0.195 s against 0.016 s) than running sequentially. Section 7.2 explains why, and it is the purest possible
-illustration of Amdahl's point: below a certain problem size, parallelism
-costs more than it buys.
+longer** (0.195 s against 0.016 s) than running sequentially. Section 7.2
+explains why: at this size the parallel overhead exceeds the time saved.
 
 ### 7.2 Where the overhead comes from
 
 A 64x64 plate is small enough that the arithmetic is nearly free, so what the
-parallel run costs above **perfectly divided work** — `t(p) - t_seq/p` — is the
-price of the two barriers and the reduction:
+parallel run costs above **perfectly divided work**, `t(p) - t_seq/p`, is
+the price of the two barriers and the reduction:
 
 | threads | 2 | 4 | 6 | 8 | 10 |
 |---|---:|---:|---:|---:|---:|
@@ -395,19 +385,18 @@ sequential cost of one iteration:
 
 (Subtracting `t_seq/p` rather than `t_seq` barely matters on this machine,
 where a 64x64 sweep costs only 1.9 us and dividing it changes little. It
-matters a great deal on a machine with slower cores: on the HPC node the same
+matters more on a machine with slower cores: on the HPC node the same
 sweep costs 6.8 us and measuring against `t_seq` reports a *negative*
 overhead. `analyse.py` uses the portable form for both.)
 
-This is the whole story of the size dependence in one line. At 400x400 the
-synchronisation needed to run an iteration on ten threads costs about two
-thirds as much as computing the iteration outright, so ten threads cannot
-win. At
-3200x3200 it is one percent and effectively free.
+This accounts for the size dependence. At 400x400 the synchronisation needed
+to run an iteration on ten threads costs about two thirds as much as
+computing the iteration outright, so ten threads cannot win. At 3200x3200 it
+is one percent and effectively free.
 
-Note also that the overhead grows with thread count while the work per thread
-shrinks — the two move in opposite directions, which is why every curve in
-the speedup plot eventually turns over.
+The overhead also grows with thread count while the work per thread shrinks.
+The two move in opposite directions, which is why every curve in the speedup
+plot eventually turns over.
 
 ### 7.3 Load balance and the two kinds of core
 
@@ -425,12 +414,12 @@ rather than waiting at a barrier.
 | dynamic partition | 98% | 97% | **96%** | **89%** | 90% | 88% | 86% |
 
 The static partition holds 95–98% efficiency for up to four threads and then
-falls off a cliff at the fifth. The reason is that the static partition gives
-every thread an equal number of rows, which is the correct thing to do only
-if every core is equally fast. The fifth thread runs on an efficiency core,
-takes far longer over its equal share, and **every barrier runs at the speed
-of the slowest thread**. At ten threads the busiest thread is working 85% of
-the time while the idlest works 47% — half the pool is sitting at a barrier.
+drops sharply at the fifth. The reason is that the static partition gives
+every thread an equal number of rows, which is only correct if every core is
+equally fast. The fifth thread runs on an efficiency core, takes far longer
+over its equal share, and **every barrier runs at the speed of the slowest
+thread**. At ten threads the busiest thread is working 85% of the time while
+the idlest works 47%, so half the pool is sitting at a barrier.
 
 The dynamic partition fixes most of this without any knowledge of which core
 is which: a thread on a slow core simply claims fewer chunks. It lifts
@@ -440,24 +429,24 @@ perfect locality wins and there is no imbalance to correct.
 
 The size of the effect can be estimated from the data. Four performance cores
 deliver 3.45x. Adding six efficiency cores takes that to 4.97x, so the six of
-them together contribute about 1.5x — roughly **not quite a third of a
-performance core each** for this memory-bound kernel. Ten cores, but only
-about five and three quarters cores' worth of throughput, which caps any
-speedup on this machine at around 5x however good the software is.
+them together contribute about 1.5x, or **not quite a third of a performance
+core each** for this memory-bound kernel. Ten cores therefore provide only
+about five and three quarter cores' worth of throughput, which caps the
+speedup available on this machine at around 5x.
 
 Memory bandwidth is the other ceiling at the largest sizes. At 3200x3200 the
 two images and the mask occupy 92 MB, far beyond any cache, so the kernel
 streams from DRAM. Taking about 9 bytes of traffic per pixel update (one new
-float read, one float written, one mask byte — the three active rows stay
+float read, one float written, one mask byte; the three active rows stay
 resident), the sequential run moves about 17 GB/s and the best 10-thread run
 about 83 GB/s, against roughly 150 GB/s of peak bandwidth on this chip. At
-better than half of peak the memory system is a real co-limiter, and no
-amount of load balancing would remove it.
+better than half of peak the memory system is a co-limiter, and load
+balancing cannot remove it.
 
-### 7.4 Weak scaling — Gustafson's law
+### 7.4 Weak scaling and Gustafson's law
 
-The plate side grows as `400*sqrt(p)`, so the number of pixels per thread —
-and therefore the arithmetic each thread does per iteration — stays constant
+The plate side grows as `400*sqrt(p)`, so the number of pixels per thread,
+and therefore the arithmetic each thread does per iteration, stays constant
 at about 160,000. Perfect scaling keeps the parallel time flat and gives a
 scaled speedup of `p`.
 
@@ -473,36 +462,29 @@ scaled speedup of `p`.
 
 Fitting `S = p - a(p-1)` gives `a = 0.52` static, `a = 0.50` dynamic.
 
-**Does it scale up for larger problems in accordance with Gustafson's Law?**
-Partly, and the way it fails is informative.
-
 Gustafson's point is that the *sequential* time grows with the scaled problem
-while the parallel time need not — and that is exactly what the third and
-fourth columns show. Sequential time rises almost perfectly linearly, 0.118 s
-to 1.202 s, a factor of 10.2 for a factor of 10 in work. Meanwhile parallel
-time rises only from 0.116 s to 0.321 s. Ten times the problem is solved in
-under three times the time. That is the Gustafson argument working:
-**enlarging the problem in step with the machine is far more effective than
-trying to make a fixed problem faster.** Compare the 3.74x scaled speedup at
-ten threads against the 1.07x that ten threads managed on a fixed 400x400
-plate in section 7.1 — the same program, the same threads, an entirely
-different outcome.
+while the parallel time need not, which is what the third and fourth columns
+show. Sequential time rises almost linearly, 0.118 s to 1.202 s, a factor of
+10.2 for a factor of 10 in work. Parallel time rises only from 0.116 s to
+0.321 s, so ten times the problem is solved in under three times the time.
+Growing the problem with the machine therefore pays better here than keeping
+the problem fixed: the scaled speedup at ten threads is 3.74x, against the
+1.07x that ten threads managed on a fixed 400x400 plate in section 7.1.
 
-But it does not reach the ideal `S = p` line, and it grows far more slowly
-after four threads. Up to four threads the scaled speedup tracks the ideal
-closely (1.72 and 2.96 against 2 and 4); beyond that it flattens. The cause
-is the same as before: threads five to ten are on efficiency cores, so "constant
-work per thread" is not constant work per unit time. Gustafson's law assumes
-`p` equal processors, and this machine does not have ten of those. On the
-four performance cores alone the law is obeyed almost exactly; the fitted
-`a = 0.5` is measuring hardware heterogeneity, not a serial section in the
-program.
+The scaled speedup does not reach the ideal `S = p` line. Up to four threads
+it tracks the ideal closely (1.72 and 2.96 against 2 and 4); beyond that it
+flattens. The cause is the same as before: threads five to ten are on
+efficiency cores, so "constant work per thread" is not constant work per unit
+time. Gustafson's law assumes `p` equal processors, which this machine does
+not provide. On the four performance cores alone the law is obeyed almost
+exactly, and the fitted `a = 0.5` is mostly a measure of hardware
+heterogeneity.
 
 ---
 
 ## 8. The heat distribution
 
-800x800 plate, run to convergence — 165,265 iterations, tolerance 1e-5 K.
+800x800 plate, run to convergence: 165,265 iterations, tolerance 1e-5 K.
 Final temperatures range from 173 K (the cold plate edge and the cold finger)
 to 323 K (the hot circular component), mean 233.21 K.
 
@@ -515,7 +497,7 @@ spread from the components into the plate, the cold finger has cut a distinct
 cool channel across the middle, and the cold edge draws heat out all round.
 The isotherms bulge away from the hot circular pad at upper left and are
 compressed between the components and the cold finger, which is where the
-steepest gradients — and in a real board, the thermal stress — would be.
+steepest gradients, and in a real board the thermal stress, would be.
 
 ---
 
@@ -523,38 +505,36 @@ steepest gradients — and in a real board, the thermal stress — would be.
 
 1. The OpenMP program produces a **bit-identical image in an identical number
    of iterations** to the sequential program, at every thread count and both
-   partition strategies. This follows structurally from Jacobi being
+   partition strategies. This follows from Jacobi being
    partition-independent, the two programs sharing one kernel, and the
    convergence test being an exact integer count.
 
 2. **Amdahl's law is obeyed**, with the fitted serial fraction falling from
    0.624 at 400x400 to 0.132 at 3200x3200. The per-iteration synchronisation
-   cost — measured directly at 8.6 us for two threads rising to 49 us for
-   ten — is what sets that fraction, and it explains both the ceiling at
-   each size and why a 100x100 plate runs about twelve times slower on ten
-   threads than on one.
+   cost, measured directly at 8.6 us for two threads rising to 49 us for ten,
+   is what sets that fraction. It explains both the ceiling at each size and
+   why a 100x100 plate runs about twelve times slower on ten threads than on
+   one.
 
 3. **Gustafson's law is obeyed on the performance cores and limited by
    hardware beyond them.** Ten times the problem is solved in 2.8 times the
    time, and scaled speedup tracks the ideal line closely up to four threads
    before flattening at about 3.7.
 
-4. **The binding constraint on this machine is that it does not have ten
-   equal cores.** Four performance cores give 3.45x at 86% efficiency; the
-   six efficiency cores add only about 1.5x between them. A static equal-row
-   partition, which is the textbook-correct choice, is actively the wrong one
-   here because every barrier waits for the slowest thread — measured busy
-   time falls to 69%. Switching to dynamic self-scheduling recovers balance
-   to 86% and lifts the best speedup from 4.40x to 4.97x, without changing a
-   single output value.
+4. **The main constraint on this machine is that its ten cores are not
+   equal.** Four performance cores give 3.45x at 86% efficiency, and the six
+   efficiency cores add only about 1.5x between them. A static equal-row
+   partition is the wrong choice here because every barrier waits for the
+   slowest thread, and measured busy time falls to 69%. Switching to dynamic
+   self-scheduling recovers balance to 86% and lifts the best speedup from
+   4.40x to 4.97x, with identical output.
 
-5. If more speedup were needed, the next steps would be algorithmic rather
-   than mechanical: red-black Gauss-Seidel or successive over-relaxation
-   would cut the *number* of iterations by a large factor, which is worth far
-   more than the remaining few tens of percent available from tuning the
-   parallel decomposition. Multigrid would be better still. Jacobi's `n^2`
-   iteration count, not its per-iteration parallelism, is the real cost of
-   this method.
+5. If more speedup were needed, the next step would be a better algorithm
+   rather than a better decomposition. Red-black Gauss-Seidel or successive
+   over-relaxation would cut the *number* of iterations by a large factor,
+   which is worth more than the few tens of percent still available from
+   tuning the parallel decomposition, and multigrid would reduce it further.
+   The dominant cost of this method is Jacobi's `n^2` iteration count.
 
 ---
 
@@ -563,23 +543,23 @@ steepest gradients — and in a real board, the thermal stress — would be.
 ```bash
 make                  # builds heat and heat_omp
 ./run_scaling.sh      # ~7 min on 10 cores; writes results/scaling.csv
-./analyse.py          # writes results/tables.md and the three figures
+python analyse.py     # writes results/tables.md and the three figures
 ```
 
 `run_scaling.sh` probes the core count at start up and derives the thread
 sweep, the plate sizes and the iteration budgets from it, so the same script
 produced both this study and the HPC node's without being told which machine
 it was on. On macOS it re-executes itself under `caffeinate`, so a system
-sleep cannot land in the middle of a timing run — section 6 explains why that
-matters. It does *not* pin threads here: macOS does not let a process set
+sleep cannot land in the middle of a timing run (section 6 explains why that
+matters). It does not pin threads here: macOS does not let a process set
 affinity, so `OMP_PROC_BIND` and `OMP_PLACES` are left unset and
-`machine.txt` records that, thread placement being entirely the operating
-system's choice on this machine. Set `OUTDIR=` to keep a second machine's
-results beside these instead of overwriting them, as
+`machine.txt` records that, thread placement being the operating system's
+choice on this machine. Set `OUTDIR=` to keep a second machine's results
+beside these instead of overwriting them, as
 [`REPORT-HPC.md`](REPORT-HPC.md) does.
 
 The raw measurements behind every table above are in
-[`results/scaling.csv`](results/scaling.csv) — 619 rows, one per run — and
+[`results/scaling.csv`](results/scaling.csv), 619 rows, one per run, with
 the generated tables in [`results/tables.md`](results/tables.md). Every
 number quoted in section 7 comes from one of those two files.
 
@@ -592,6 +572,6 @@ pandoc REPORT.md -s --embed-resources --css=results/report.css \
        -o results/REPORT.html
 ```
 
-For a PDF, print that HTML from a browser — `results/report.css` carries an
+For a PDF, print that HTML from a browser. `results/report.css` carries an
 A4 `@page` rule and page-break hints for tables and figures. (No PDF engine
 is assumed to be installed; `REPORT.pdf` was produced the same way.)

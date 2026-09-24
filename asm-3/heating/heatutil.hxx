@@ -25,8 +25,8 @@
 
 // Convergence tolerance and iteration cap used by both programs unless
 // overridden on the command line.
-const float HEAT_TOL   = 0.00001f;
-const int   HEAT_ITMAX = 1000000;
+const float HEAT_TOL = 0.00001f;
+const int HEAT_ITMAX = 1000000;
 
 /*
   Seconds on a monotonic clock, used for every timing in both programs.
@@ -41,7 +41,8 @@ const int   HEAT_ITMAX = 1000000;
 inline double wall_seconds()
 {
   return std::chrono::duration<double>(
-           std::chrono::steady_clock::now().time_since_epoch()).count();
+             std::chrono::steady_clock::now().time_since_epoch())
+      .count();
 }
 
 /*
@@ -59,7 +60,7 @@ inline double wall_seconds()
   afterwards is one the circuit was drawn on.
 */
 inline void build_fixed_mask(int npixy, int npixx,
-                             std::vector<unsigned char>& fixed)
+                             std::vector<unsigned char> &fixed)
 {
   const float sentinel = -1.0e30f;
 
@@ -87,12 +88,17 @@ inline void build_fixed_mask(int npixy, int npixx,
   With nth == 1 this hands back every interior row, which is precisely what
   the sequential program wants.
 */
-inline void row_range(int npixy, int nth, int tid, int& y0, int& y1)
+inline void row_range(int npixy, int nth, int tid, int &y0, int &y1)
 {
-  const int nrows = npixy - 2;            // interior rows only
-  if (nrows <= 0 || tid >= nth) { y0 = 1; y1 = 1; return; }
+  const int nrows = npixy - 2; // interior rows only
+  if (nrows <= 0 || tid >= nth)
+  {
+    y0 = 1;
+    y1 = 1;
+    return;
+  }
 
-  const int base  = nrows / nth;
+  const int base = nrows / nth;
   const int extra = nrows % nth;
   const int start = tid * base + (tid < extra ? tid : extra);
   const int count = base + (tid < extra ? 1 : 0);
@@ -116,26 +122,29 @@ inline void row_range(int npixy, int nth, int tid, int& y0, int& y1)
   a pixel depends only on the previous image h, splitting the row range
   changes nothing about the value any pixel gets.
 */
-inline int jacobi_sweep(const float* h, float* g, const unsigned char* fixed,
+inline int jacobi_sweep(const float *h, float *g, const unsigned char *fixed,
                         int npixx, int y0, int y1, float tol)
 {
   int nconv = 0;
 
-  for (int y = y0; y < y1; ++y) {
+  for (int y = y0; y < y1; ++y)
+  {
 
-    const float* hup = h + static_cast<size_t>(y - 1) * npixx;
-    const float* hmid= h + static_cast<size_t>(y    ) * npixx;
-    const float* hdn = h + static_cast<size_t>(y + 1) * npixx;
-    float*       gmid= g + static_cast<size_t>(y    ) * npixx;
-    const unsigned char* fx = fixed + static_cast<size_t>(y) * npixx;
+    const float *hup = h + static_cast<size_t>(y - 1) * npixx;
+    const float *hmid = h + static_cast<size_t>(y) * npixx;
+    const float *hdn = h + static_cast<size_t>(y + 1) * npixx;
+    float *gmid = g + static_cast<size_t>(y) * npixx;
+    const unsigned char *fx = fixed + static_cast<size_t>(y) * npixx;
 
     int rowconv = 0;
-    for (int x = 1; x < npixx - 1; ++x) {
+    for (int x = 1; x < npixx - 1; ++x)
+    {
       const float old = hmid[x];
       const float upd = fx[x] ? old
-        : 0.25f * (hmid[x-1] + hmid[x+1] + hup[x] + hdn[x]);
+                              : 0.25f * (hmid[x - 1] + hmid[x + 1] + hup[x] + hdn[x]);
       gmid[x] = upd;
-      if (std::fabs(upd - old) < tol) ++rowconv;
+      if (std::fabs(upd - old) < tol)
+        ++rowconv;
     }
     nconv += rowconv;
   }
@@ -153,43 +162,53 @@ inline int jacobi_sweep(const float* h, float* g, const unsigned char* fixed,
      -i N     stop after N iterations even if not converged (benchmark aid)
      -d       use the dynamic partition instead of static blocks (heat_omp)
 */
-struct HeatOptions {
-  int         npix;
-  int         nthreads;      // 0: let OpenMP decide
-  float       tol;
+struct HeatOptions
+{
+  int npix;
+  int nthreads; // 0: let OpenMP decide
+  float tol;
   std::string outfile;
-  int         itmax;
-  bool        dynamic;
-  bool        ok;
+  int itmax;
+  bool dynamic;
+  bool ok;
 
   HeatOptions()
-    : npix(0), nthreads(0), tol(HEAT_TOL), outfile("plate1.fit"),
-      itmax(HEAT_ITMAX), dynamic(false), ok(false) {}
+      : npix(0), nthreads(0), tol(HEAT_TOL), outfile("plate1.fit"),
+        itmax(HEAT_ITMAX), dynamic(false), ok(false) {}
 
   bool writefits() const { return outfile != "none"; }
 };
 
-inline HeatOptions parse_options(int argc, char* argv[],
-                                 const std::string& defout)
+inline HeatOptions parse_options(int argc, char *argv[],
+                                 const std::string &defout)
 {
   HeatOptions o;
   o.outfile = defout;
 
-  if (argc < 2) return o;
+  if (argc < 2)
+    return o;
   o.npix = atoi(argv[1]);
 
-  for (int i = 2; i < argc; ++i) {
+  for (int i = 2; i < argc; ++i)
+  {
     const std::string a = argv[i];
     const bool hasval = (i + 1 < argc);
-    if      (a == "-p" && hasval) o.nthreads = atoi(argv[++i]);
-    else if (a == "-t" && hasval) o.tol = static_cast<float>(atof(argv[++i]));
-    else if (a == "-o" && hasval) o.outfile = argv[++i];
-    else if (a == "-i" && hasval) o.itmax = atoi(argv[++i]);
-    else if (a == "-d")           o.dynamic = true;
-    else return o;                                   // unrecognised: bail out
+    if (a == "-p" && hasval)
+      o.nthreads = atoi(argv[++i]);
+    else if (a == "-t" && hasval)
+      o.tol = static_cast<float>(atof(argv[++i]));
+    else if (a == "-o" && hasval)
+      o.outfile = argv[++i];
+    else if (a == "-i" && hasval)
+      o.itmax = atoi(argv[++i]);
+    else if (a == "-d")
+      o.dynamic = true;
+    else
+      return o; // unrecognised: bail out
   }
 
-  if (o.npix < 3 || o.tol <= 0.0f || o.itmax < 1) return o;
+  if (o.npix < 3 || o.tol <= 0.0f || o.itmax < 1)
+    return o;
 
   o.ok = true;
   return o;
@@ -198,22 +217,24 @@ inline HeatOptions parse_options(int argc, char* argv[],
 // FNV-1a over the raw bytes of the image. Printing this lets us prove that
 // the sequential and parallel runs produced the identical image, without
 // having to diff two FITS files (whose headers carry timestamps).
-inline unsigned long long array_hash(const float* buf, size_t n)
+inline unsigned long long array_hash(const float *buf, size_t n)
 {
   unsigned long long hsh = 1469598103934665603ULL;
-  const unsigned char* p = reinterpret_cast<const unsigned char*>(buf);
+  const unsigned char *p = reinterpret_cast<const unsigned char *>(buf);
   const size_t nbytes = n * sizeof(float);
-  for (size_t i = 0; i < nbytes; ++i) {
+  for (size_t i = 0; i < nbytes; ++i)
+  {
     hsh ^= static_cast<unsigned long long>(p[i]);
     hsh *= 1099511628211ULL;
   }
   return hsh;
 }
 
-inline double array_mean(const float* buf, size_t n)
+inline double array_mean(const float *buf, size_t n)
 {
   double s = 0.0;
-  for (size_t i = 0; i < n; ++i) s += buf[i];
+  for (size_t i = 0; i < n; ++i)
+    s += buf[i];
   return s / static_cast<double>(n);
 }
 

@@ -20,7 +20,7 @@
 #
 #   OUTDIR=results-hpc   where to write, so a second machine's numbers do not
 #                        overwrite the first's. Pass the same directory to
-#                        ./analyse.py afterwards.
+#                        python analyse.py afterwards.
 #   REPS=5               repeats per configuration; the analysis takes the
 #                        fastest.
 #   BUDGET=4             multiplies the strong scaling iteration counts.
@@ -433,4 +433,4 @@ echo "load at end: $(loadavg_all)"
 echo "elapsed    : $(( (T1 - T0) / 60 )) min $(( (T1 - T0) % 60 )) s"
 echo "wrote $OUT ($(( $(wc -l < "$OUT") - 1 )) rows)"
 echo
-echo "next: ./analyse.py $OUTDIR"
+echo "next: python analyse.py $OUTDIR"

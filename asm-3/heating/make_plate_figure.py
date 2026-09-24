@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Render the initial and converged plates side by side for the report.
 
-    ./make_plate_figure.py plate0.fit plate1.fit results/plate.png
+    python make_plate_figure.py plate0.fit plate1.fit results/plate.png
 """
 import sys
 from pathlib import Path

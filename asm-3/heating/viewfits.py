@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
 """View FITS images produced by the heat-transfer programs.
 
-    ./viewfits.py plate0.fit                 # open a window
-    ./viewfits.py plate0.fit plate1.fit      # compare side by side
-    ./viewfits.py plate0.fit --png           # write plate0.png and open it
+    python viewfits.py plate0.fit                 # open a window
+    python viewfits.py plate0.fit plate1.fit      # compare side by side
+    python viewfits.py plate0.fit --png           # write plate0.png and open it
 """
 import argparse
 import subprocess

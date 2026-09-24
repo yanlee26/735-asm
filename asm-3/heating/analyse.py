@@ -2,7 +2,7 @@
 """159.735 Assignment 3 -- turn results/scaling.csv into the tables and
 figures used in the report.
 
-    ./analyse.py
+    python analyse.py
 
 Reads  results/scaling.csv   (written by run_scaling.sh)
 Writes results/tables.md     tables, ready to paste into the report
@@ -30,7 +30,7 @@ import numpy as np
 RES = Path(sys.argv[1]) if len(sys.argv) > 1 else Path("results")
 if not (RES / "scaling.csv").exists():
     sys.exit(f"{RES/'scaling.csv'} not found -- run ./run_scaling.sh first "
-             f"(or pass the results directory: ./analyse.py results-hpc)")
+             f"(or pass the results directory: python analyse.py results-hpc)")
 
 ROWS = []
 with open(RES / "scaling.csv") as fh:
